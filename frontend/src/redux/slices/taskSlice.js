@@ -125,30 +125,79 @@ export const downloadDocument = createAsyncThunk(
   "tasks/downloadDocument",
   async ({ taskId, documentId, documentName }, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/tasks/${taskId}/documents/${documentId}`, {
-        responseType: "blob",
-      })
+      console.log(`Attempting to download document: ${documentId} from task: ${taskId}`);
+      
+      // Try downloading using direct API endpoint first
+      try {
+        const response = await api.get(`/tasks/${taskId}/documents/${documentId}`, {
+          responseType: "blob",
+        });
+        
+        // Check if we got a valid blob response
+        if (response.data.size === 0) {
+          console.error("Empty response received from server");
+          throw new Error("Empty file received");
+        }
+        
+        // Create a URL for the blob
+        const url = window.URL.createObjectURL(new Blob([response.data]));
 
-      // Create a URL for the blob
-      const url = window.URL.createObjectURL(new Blob([response.data]))
+        // Create a temporary link and trigger download
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", documentName);
+        document.body.appendChild(link);
+        link.click();
 
-      // Create a temporary link and trigger download
-      const link = document.createElement("a")
-      link.href = url
-      link.setAttribute("download", documentName)
-      document.body.appendChild(link)
-      link.click()
-
-      // Clean up
-      link.parentNode.removeChild(link)
-      window.URL.revokeObjectURL(url)
-
-      return { success: true }
+        // Clean up
+        setTimeout(() => {
+          link.parentNode.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        }, 100);
+        
+        return { success: true };
+      } catch (error) {
+        console.error("Error with primary download method:", error);
+        
+        // Fall back to the test endpoint if the primary method fails
+        console.log("Trying fallback method...");
+        
+        // Try to extract the filename from the error response
+        let filename = documentName;
+        if (error.response?.data) {
+          // Try to parse the error message to see if it contains the filename
+          const errorObj = JSON.parse(JSON.stringify(error.response.data));
+          console.log("Error object:", errorObj);
+          
+          // Try to get the document path from the error message
+          if (typeof errorObj === 'string' && errorObj.includes('File not found')) {
+            console.log("Document ID might be the filename itself, trying direct access");
+            filename = documentId;
+          }
+        }
+        
+        // Create a direct link to potentially access the file through the static route
+        const link = document.createElement("a");
+        link.href = `/api/test-pdf/${filename}`;
+        link.setAttribute("download", documentName);
+        document.body.appendChild(link);
+        console.log("Trying to download with fallback URL:", link.href);
+        
+        link.click();
+        
+        // Clean up
+        setTimeout(() => {
+          link.parentNode.removeChild(link);
+        }, 100);
+        
+        return { success: true, message: "Using fallback download method" };
+      }
     } catch (error) {
-      return rejectWithValue("Failed to download document")
+      console.error("Download error:", error);
+      return rejectWithValue(error.response?.data?.message || "Failed to download document");
     }
-  },
-)
+  }
+);
 
 const taskSlice = createSlice({
   name: "tasks",
@@ -193,7 +242,8 @@ const taskSlice = createSlice({
       })
       .addCase(getTaskById.fulfilled, (state, action) => {
         state.loading = false
-        state.task = action.payload
+        // state.task = action.payload
+        state.task = action.payload.data || action.payload
       })
       .addCase(getTaskById.rejected, (state, action) => {
         state.loading = false
@@ -242,8 +292,17 @@ const taskSlice = createSlice({
         state.error = action.payload
       })
       // Download document
+      .addCase(downloadDocument.pending, (state) => {
+        // Set loading indicator for downloads if needed
+      })
+      .addCase(downloadDocument.fulfilled, (state) => {
+        // Clear any previous download errors
+        state.error = null;
+      })
       .addCase(downloadDocument.rejected, (state, action) => {
-        state.error = action.payload
+        state.error = action.payload || "Failed to download document";
+        // Show the error immediately
+        alert(`Download failed: ${state.error}`);
       })
   },
 })

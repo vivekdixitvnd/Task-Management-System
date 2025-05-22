@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { X } from "react-feather"
 
-const Modal = ({ isOpen, onClose, title, children, footer }) => {
+const Modal = ({ isOpen, onClose, title, children, footer, fullWidth = false }) => {
   // Close modal on escape key
   useEffect(() => {
     const handleEscape = (e) => {
@@ -38,7 +38,7 @@ const Modal = ({ isOpen, onClose, title, children, footer }) => {
 
   return (
     <div className="modal-backdrop" onClick={handleBackdropClick}>
-      <div className="modal">
+      <div className={`modal ${fullWidth ? 'modal-full-width' : ''}`}>
         <div className="modal-header">
           <h2 className="modal-title">{title}</h2>
           <button className="modal-close" onClick={onClose}>

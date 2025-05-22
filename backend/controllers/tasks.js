@@ -319,14 +319,17 @@ exports.deleteTask = async (req, res) => {
 // @access  Private
 exports.downloadDocument = async (req, res) => {
   try {
+    console.log(`Download request for taskId: ${req.params.id}, documentId: ${req.params.documentId}`);
+    
     // Get task
-    const task = await Task.findById(req.params.id)
+    const task = await Task.findById(req.params.id);
 
     if (!task) {
+      console.log("Task not found");
       return res.status(404).json({
         success: false,
         message: "Task not found",
-      })
+      });
     }
 
     // Check if user is authorized to access this task
@@ -335,37 +338,91 @@ exports.downloadDocument = async (req, res) => {
       task.assignedTo.toString() !== req.user.id &&
       task.createdBy.toString() !== req.user.id
     ) {
+      console.log("Not authorized to access this task");
       return res.status(403).json({
         success: false,
         message: "Not authorized to access this task",
-      })
+      });
     }
 
     // Find document
-    const document = task.documents.id(req.params.documentId)
+    const document = task.documents.id(req.params.documentId);
+    console.log("Document from DB:", JSON.stringify(document));
 
     if (!document) {
+      console.log("Document not found");
       return res.status(404).json({
         success: false,
         message: "Document not found",
-      })
+      });
     }
 
-    // Send file
-    const filePath = path.join(__dirname, "..", document.path)
+    // Extract filename from path
+    let filename;
+    if (document.path && document.path.includes('/')) {
+      filename = document.path.split('/').pop();
+    } else if (document.path && document.path.includes('\\')) {
+      filename = document.path.split('\\').pop();
+    } else {
+      filename = document.filename; // Fallback to the filename field
+    }
 
-    if (!fs.existsSync(filePath)) {
+    console.log(`Extracted filename: ${filename}`);
+
+    // Try multiple paths to find the file
+    const possiblePaths = [
+      path.resolve(__dirname, "..", document.path),
+      path.join(__dirname, "..", document.path),
+      path.join(__dirname, "..", "uploads", filename),
+      path.resolve(__dirname, "..", "uploads", filename),
+      document.path, // Try the direct path as stored
+      path.join(process.cwd(), document.path),
+      path.join(process.cwd(), "backend", "uploads", filename)
+    ];
+
+    let filePath = null;
+    
+    // Find the first path that exists
+    for (const potentialPath of possiblePaths) {
+      console.log(`Checking path: ${potentialPath}`);
+      if (fs.existsSync(potentialPath)) {
+        filePath = potentialPath;
+        console.log(`Using file path: ${filePath}`);
+        break;
+      }
+    }
+
+    if (!filePath) {
+      console.log("File not found in any of the attempted paths");
       return res.status(404).json({
         success: false,
-        message: "File not found",
-      })
+        message: "File not found on server - tried multiple paths"
+      });
     }
 
-    res.download(filePath, document.originalName)
+    // Set appropriate headers
+    res.setHeader('Content-Type', document.mimetype || 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${document.originalName}"`);
+    
+    // Read and pipe the file directly to the response
+    console.log("Streaming file to client...");
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.on('error', (error) => {
+      console.error('Error streaming file:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          message: "Error reading file stream"
+        });
+      }
+    });
+    
+    fileStream.pipe(res);
   } catch (err) {
+    console.error("Error in downloadDocument:", err);
     res.status(400).json({
       success: false,
       message: err.message,
-    })
+    });
   }
-}
+};

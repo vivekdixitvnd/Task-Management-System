@@ -7,8 +7,9 @@ import { getTaskById, updateTask, deleteTask, downloadDocument } from "../redux/
 import Modal from "../components/Modal"
 import TaskForm from "../components/TaskForm"
 import Alert from "../components/Alert"
-import { Edit, Trash2, ArrowLeft, FileText, Download } from "react-feather"
+import { Edit, Trash2, ArrowLeft, FileText, Download, Eye } from "react-feather"
 import { formatDate } from "../utils/formatters"
+import api from "../utils/api"
 
 const TaskDetails = () => {
   const { id } = useParams()
@@ -20,6 +21,8 @@ const TaskDetails = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [alert, setAlert] = useState(null)
+  const [viewingDocument, setViewingDocument] = useState(null)
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
 
   useEffect(() => {
     dispatch(getTaskById(id))
@@ -63,8 +66,58 @@ const TaskDetails = () => {
   }
 
   const handleDownloadDocument = (documentId, documentName) => {
-    dispatch(downloadDocument({ taskId: id, documentId, documentName }))
+    try {
+      console.log("Downloading document:", documentId, documentName);
+      setAlert({ type: "info", message: "Downloading document..." });
+      dispatch(downloadDocument({ taskId: id, documentId, documentName }))
+        .unwrap()
+        .then(() => {
+          setAlert({ type: "success", message: "Document downloaded successfully" });
+        })
+        .catch((error) => {
+          console.error("Download error:", error);
+          setAlert({ type: "danger", message: `Failed to download: ${error}` });
+        });
+    } catch (error) {
+      console.error("Download exception:", error);
+      setAlert({ type: "danger", message: "An unexpected error occurred" });
+    }
   }
+
+  const handleViewDocument = async (documentId, documentName) => {
+    try {
+      // First request a temporary token for the document
+      console.log("Requesting preview token for document:", documentId);
+      setAlert({ type: "info", message: "Preparing document preview..." });
+      
+      const response = await api.get(`/tasks/${id}/create-preview-token/${documentId}`);
+      
+      if (response.data && response.data.success && response.data.previewUrl) {
+        // Get API base URL without the /api suffix to avoid double /api/api
+        const apiBaseUrl = api.defaults.baseURL ? api.defaults.baseURL.replace(/\/api$/, '') : '';
+        const fullPreviewUrl = `${apiBaseUrl}/api${response.data.previewUrl}`;
+        
+        console.log("Viewing document with public URL:", fullPreviewUrl);
+        
+        setViewingDocument({
+          id: documentId,
+          name: documentName,
+          url: fullPreviewUrl
+        });
+        setIsPdfModalOpen(true);
+        setAlert(null);
+      } else {
+        console.error("Failed to get preview URL:", response.data);
+        setAlert({ type: "danger", message: "Failed to prepare document preview" });
+      }
+    } catch (error) {
+      console.error("Error preparing document preview:", error);
+      setAlert({ 
+        type: "danger", 
+        message: error.response?.data?.message || "Failed to prepare document preview" 
+      });
+    }
+  };
 
   const canModifyTask = () => {
     if (!task || !user) return false
@@ -176,13 +229,26 @@ const TaskDetails = () => {
             </h2>
             <div className="attachment-list">
               {task.documents.map((doc) => (
-                <div
-                  key={doc._id}
-                  className="attachment-item cursor-pointer"
-                  onClick={() => handleDownloadDocument(doc._id, doc.originalName)}
-                >
-                  <Download size={16} />
-                  <span>{doc.originalName}</span>
+                <div key={doc._id} className="attachment-item">
+                  <div className="attachment-info">
+                    <span>{doc.originalName}</span>
+                  </div>
+                  <div className="attachment-actions">
+                    <button 
+                      className="btn btn-sm btn-secondary flex items-center gap-1"
+                      onClick={() => handleViewDocument(doc._id, doc.originalName)}
+                    >
+                      <Eye size={16} />
+                      <span>View</span>
+                    </button>
+                    <button 
+                      className="btn btn-sm btn-primary flex items-center gap-1"
+                      onClick={() => handleDownloadDocument(doc._id, doc.originalName)}
+                    >
+                      <Download size={16} />
+                      <span>Download</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -205,6 +271,45 @@ const TaskDetails = () => {
               Delete
             </button>
           </div>
+        </div>
+      </Modal>
+
+      <Modal 
+        isOpen={isPdfModalOpen} 
+        onClose={() => {
+          setIsPdfModalOpen(false);
+          setViewingDocument(null);
+        }} 
+        title={viewingDocument?.name || "View Document"}
+        fullWidth={true}
+      >
+        <div className="pdf-viewer">
+          {viewingDocument && (
+            <>
+              <div className="pdf-toolbar mb-4">
+                <a 
+                  href={viewingDocument.url} 
+                  download={viewingDocument.name}
+                  className="btn btn-primary flex items-center gap-2"
+                >
+                  <Download size={16} />
+                  Download
+                </a>
+              </div>
+              <div className="pdf-container">
+                <iframe 
+                  src={viewingDocument.url} 
+                  title={viewingDocument.name}
+                  width="100%"
+                  height="600px"
+                  style={{ border: "none" }}
+                ></iframe>
+              </div>
+            </>
+          )}
+          {!viewingDocument && (
+            <div className="text-center p-8">Unable to load document.</div>
+          )}
         </div>
       </Modal>
     </div>
