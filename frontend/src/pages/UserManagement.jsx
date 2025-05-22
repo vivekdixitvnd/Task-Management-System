@@ -120,7 +120,8 @@ const UserManagement = () => {
                   <h3>{user.name}</h3>
                   <p>{user.email}</p>
                   <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-800 rounded text-xs mt-1">
-                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                  {/* {user.role.charAt(0).toUpperCase() + user.role.slice(1)} */}
+                    {user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'User'}
                   </span>
                 </div>
               </div>
