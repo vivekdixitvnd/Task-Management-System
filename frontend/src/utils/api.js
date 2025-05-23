@@ -1,7 +1,8 @@
 import axios from "axios"
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5003/api",
+  // baseURL: "http://localhost:5003/api",
+  baseURL: "https://task-management-system-pmzu.onrender.com/api",
   headers: {
     "Content-Type": "application/json",
   },
