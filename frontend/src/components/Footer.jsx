@@ -1,7 +1,7 @@
 const Footer = () => {
   return (
-    <footer className="bg-gray-100 text-center text-sm text-gray-500 py-4">
-      © {new Date().getFullYear()} Parmarth | All rights reserved.
+    <footer className="bg-white text-center text-sm text-gray-500 py-3 border-t">
+      © 2025 Parmarth | All rights reserved.
     </footer>
   )
 }
