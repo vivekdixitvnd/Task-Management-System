@@ -35,17 +35,22 @@ export const register = createAsyncThunk("auth/register", async (userData, { rej
 export const login = createAsyncThunk("auth/login", async (userData, { rejectWithValue }) => {
   try {
     const response = await api.post("/auth/login", userData)
-    localStorage.setItem("token", response.data.token)
-    localStorage.setItem("user", JSON.stringify(response.data.user))
-    setAuthToken(response.data.token)
+    const { token, user } = response.data
+    
+    // Set token in localStorage and API headers
+    localStorage.setItem("token", token)
+    localStorage.setItem("user", JSON.stringify(user))
+    setAuthToken(token)
+    
     return response.data
   } catch (error) {
-    return rejectWithValue(error.response.data.message || "Login failed")
+    return rejectWithValue(error.response?.data?.message || "Login failed")
   }
 })
 
 // Logout user
 export const logout = createAsyncThunk("auth/logout", async () => {
+  // Clear token from localStorage and API headers
   localStorage.removeItem("token")
   localStorage.removeItem("user")
   setAuthToken(null)
