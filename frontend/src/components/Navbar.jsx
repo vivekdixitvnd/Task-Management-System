@@ -22,7 +22,7 @@ const Navbar = ({ toggleSidebar }) => {
             <Menu size={24} />
           </button>
           <Link to="/dashboard" className="navbar-brand">
-            TaskManager
+            Task Management System
           </Link>
         </div>
 
