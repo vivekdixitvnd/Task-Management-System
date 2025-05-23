@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -45,13 +46,12 @@ const Layout = () => {
       <Navbar toggleSidebar={toggleSidebar} />
       <div className="flex">
         <Sidebar isOpen={sidebarOpen} />
-        <main className={main-content ${sidebarOpen && !isMobile ? "ml-250" : "ml-0"}}>
+        <main className={`main-content ${sidebarOpen && !isMobile ? "ml-250" : "ml-0"}`}>
           <div className="container">
             <Outlet />
           </div>
         </main>
       </div>
-  
     </div>
   )
 }
