@@ -30,20 +30,19 @@ const Layout = () => {
     setSidebarOpen(!sidebarOpen)
   }
 
-  return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar toggleSidebar={toggleSidebar} />
-      <div className="flex flex-1">
-        <Sidebar isOpen={sidebarOpen} />
-        <main className={`main-content flex-1 ${sidebarOpen && !isMobile ? "ml-250" : "ml-0"}`}>
-          <div className="container">
-            <Outlet />
-          </div>
-        </main>
-      </div>
-      <Footer /> 
+return (
+  <div className="flex flex-col min-h-screen">
+    <Navbar toggleSidebar={toggleSidebar} />
+    <div className="flex flex-1">
+      <Sidebar isOpen={sidebarOpen} />
+      <main className={`main-content flex-1 ${sidebarOpen && !isMobile ? "ml-250" : "ml-0"}`}>
+        <div className="container py-4">
+          <Outlet />
+        </div>
+      </main>
     </div>
-  )
-}
+    <Footer />
+  </div>
+)
 
 export default Layout
