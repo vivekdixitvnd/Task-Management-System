@@ -120,6 +120,4 @@ Run tests using Jest:
 npm test
 \`\`\`
 
-## License
 
-MIT
